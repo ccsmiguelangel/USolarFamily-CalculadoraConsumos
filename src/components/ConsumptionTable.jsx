@@ -8,10 +8,13 @@ import {
   Container, 
   Grid,
   Group,
+  Text,
+  NumberFormatter ,
   useMantineTheme,
 } from '@mantine/core';
 import { BarChart } from '@mantine/charts';
 import { IconBolt, IconChartLine } from '@tabler/icons-react';
+import logo from '../assets/Logotipo-2.png'; // Importar el logo
 
 const ConsumptionTable = () => {
   const theme = useMantineTheme();
@@ -29,6 +32,7 @@ const ConsumptionTable = () => {
   const [averageCost, setAverageCost] = useState(0);
   const [initialPrice, setInitialPrice] = useState(0);
   const [growthRate, setGrowthRate] = useState('2.99');
+  const [panelWatts, setPanelWatts] = useState(0); // Estado para Panel Watts
 
   // Calcular promedios
   const averageConsumption = useMemo(() => {
@@ -95,6 +99,31 @@ const ConsumptionTable = () => {
     }));
   }, [averageMonthlyCost, selectedRate]);
 
+  const totalLuma = useMemo(() => {
+    return chartData.reduce((acc, curr) => acc + curr.value, 0);
+  }, [chartData]);
+  
+  const totalNewProjection = useMemo(() => {
+    return projectionData.reduce((acc, curr) => acc + curr.value, 0);
+  }, [projectionData]);
+
+  // Validar si todos los meses están llenos
+  const allMonthsFilled = useMemo(() => {
+    return consumptions.every(c => !isNaN(c.consumption) && c.consumption !== '' && c.consumption != 0);
+  }, [consumptions]);
+
+  // Calcular el tamaño del sistema
+  const systemSize = useMemo(() => {
+    if (!allMonthsFilled) return 0; // Si faltan meses, no calcular
+    return totalConsumption / 1533;
+  }, [totalConsumption, allMonthsFilled]);
+
+  // Calcular la cantidad de paneles
+  const numberOfPanels = useMemo(() => {
+    if (!panelWatts || panelWatts === 0 || !allMonthsFilled) return 0; // Si no hay Panel Watts o faltan meses, no calcular
+    return Math.ceil((systemSize * 1000) / panelWatts);
+  }, [systemSize, panelWatts, allMonthsFilled]);
+
   // Manejar cambios en los inputs
   const handleInputChange = (id, field, value) => {
     // Reemplazar comas por puntos y convertir a número decimal
@@ -123,13 +152,21 @@ const ConsumptionTable = () => {
 
   return (
     <Container size="xl" p="md">
+      {/* Header con el logo */}
+      <Paper pb="md" style={{ display: 'flex', justifyContent: 'center', background: 'transparent' }}>
+        <img src={logo} alt="Logo de la empresa" style={{ height: '50px' }} />
+      </Paper>
       <Grid gutter="xl">
         <Grid.Col span={12}>
           <Paper p="md" bg="dark.7" withBorder>
             <Grid justify="space-between" align="center">
               <Grid.Col span="auto">
-                <Title order={1} c="white">
+                <Title order={1} c="white" display={{lg: 'block', base: 'none'}}>
                   <IconBolt size={28} style={{ marginRight: 10 }} />
+                  Calculadora Energética
+                </Title>
+                <Title order={2} c="white" display={{lg: 'none', base: 'block'}}>
+                  <IconBolt size={14} style={{ marginRight: 10 }} />
                   Calculadora Energética
                 </Title>
               </Grid.Col>
@@ -151,7 +188,6 @@ const ConsumptionTable = () => {
         <Grid.Col span={12}>
           <Paper p="md" bg="dark.7" withBorder>
             <Table.ScrollContainer type="native" minWidth={500} >
-
             <Table striped highlightOnHover withColumnBorders>
               <Table.Thead>
                 <Table.Tr>
@@ -188,23 +224,23 @@ const ConsumptionTable = () => {
                       />
                     </Table.Td>
                     <Table.Td>
-                      ${row.cost.toFixed(2)}
+                      <NumberFormatter thousandSeparator prefix="$ " value={row.cost.toFixed(2)}/>
                     </Table.Td>
                   </Table.Tr>
                 ))}
                  {/* Fila de promedios */}
                   <Table.Tr style={{ fontWeight: 'bold', backgroundColor: theme.colors.blue[9] }}>
                     <Table.Td>PROMEDIO</Table.Td>
-                    <Table.Td>{averageConsumption.toFixed(2)} kWh</Table.Td>
-                    <Table.Td>${averagePrice.toFixed(2)}</Table.Td>
-                    <Table.Td>${averageMonthlyCost.toFixed(2)}</Table.Td>
+                    <Table.Td><NumberFormatter thousandSeparator suffix=" kWh" value={averageConsumption.toFixed(2)}/></Table.Td>
+                    <Table.Td><NumberFormatter thousandSeparator prefix="$ " value={averagePrice.toFixed(2)}/></Table.Td>
+                    <Table.Td><NumberFormatter thousandSeparator prefix="$ " value={averageMonthlyCost.toFixed(2)} /></Table.Td>
                   </Table.Tr>
                    {/* Fila de totales */}
                   <Table.Tr style={{ fontWeight: 'bold', backgroundColor: theme.colors.dark[5] }}>
                     <Table.Td>TOTAL</Table.Td>
-                    <Table.Td>{totalConsumption.toFixed(2)} kWh</Table.Td>
+                    <Table.Td><NumberFormatter thousandSeparator suffix=" kWh" value={totalConsumption.toFixed(2)} /></Table.Td>
                     <Table.Td>-</Table.Td> {/* No se suma el precio */}
-                    <Table.Td>${totalMonthlyCost.toFixed(2)}</Table.Td>
+                    <Table.Td><NumberFormatter thousandSeparator prefix="$ " value={totalMonthlyCost.toFixed(2)} /></Table.Td>
                   </Table.Tr>
               </Table.Tbody>
             </Table>
@@ -260,7 +296,7 @@ const ConsumptionTable = () => {
                           borderRadius: '2px'
                         }} />
                         <span style={{ fontWeight: 500 }}>
-                          ${item.value.toFixed(2)}
+                        <NumberFormatter thousandSeparator prefix="$ " value={item.value.toFixed(2)} />
                         </span>
                       </div>
                     ))}
@@ -346,7 +382,7 @@ const ConsumptionTable = () => {
                             borderRadius: '2px'
                           }} />
                           <span style={{ fontWeight: 500 }}>
-                            ${item.value.toFixed(2)}
+                          <NumberFormatter thousandSeparator prefix="$ " value={item.value.toFixed(2)} />
                           </span>
                         </div>
                       ))}
@@ -355,6 +391,97 @@ const ConsumptionTable = () => {
                 }}
               />
             </div>
+          </Paper>
+        </Grid.Col>
+        {/* Resumen de pagos */}
+        {(totalLuma > 0 || totalNewProjection > 0) && (
+          <Grid.Col span={{ lg: 6, base: 12 }}>
+
+          <Paper p="md" bg="dark.7" withBorder>
+            <Title order={2} mb="md" c="white">Resumen de Pagos en 25 años</Title>
+            <Table.ScrollContainer type="native" minWidth={500} >
+              <Table striped highlightOnHover withColumnBorders>
+                <Table.Thead>                
+                  <Table.Tr>
+                    <Table.Td>
+                      Total Gastado en LUMA
+                    </Table.Td>
+                    <Table.Td>
+                    Total Ahorrado en Nueva Proyección
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="xl" c="red.4">
+                        <NumberFormatter thousandSeparator prefix="$ " value={totalLuma.toFixed(2)} />
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                    <Text size="xl" c="green.4">
+                      <NumberFormatter thousandSeparator prefix="$ " value={totalNewProjection.toFixed(2)} />
+                    </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
+          </Grid.Col>
+        )}
+        <Grid.Col span={{ lg: 6, base: 12 }}>
+          <Paper p="md" bg="dark.7" withBorder>
+              <Title order={2} mb="md" c="white">
+                Cálculo de Paneles Solares
+              </Title>
+              <NumberInput
+                label="Ingrese los Watts por Panel (200W - 1000W)"
+                placeholder="Watts por Panel"
+                value={panelWatts}
+                onChange={(value) => setPanelWatts(value)}
+                min={200}
+                max={1000}
+                step={50}
+                allowDecimal={false}
+                hideControls
+                rightSection="W"
+                my="md"
+              />
+            {(!panelWatts || (panelWatts === 0) || !allMonthsFilled) ? ( 
+            <Text c="red" size="xl">
+              Añade valor de mes faltante y los watts por panel.
+            </Text>
+            ) : (
+            <Table.ScrollContainer type="native" minWidth={500} >
+              <Table striped highlightOnHover withColumnBorders>
+                <Table.Thead>                
+                  <Table.Tr>
+                    <Table.Td>
+                      Tamaño del sistema
+                    </Table.Td>
+                    <Table.Td>
+                      Cantidad de paneles necesarios
+                    </Table.Td>
+                  </Table.Tr>                
+                </Table.Thead>
+                <Table.Tbody>                
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="lg" c="blue.4">
+                        <NumberFormatter thousandSeparator suffix=" kWh" value={systemSize.toFixed(2)} />
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xl" c="green.4">
+                        <NumberFormatter thousandSeparator value={numberOfPanels} />
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          )}
           </Paper>
         </Grid.Col>
       </Grid>
