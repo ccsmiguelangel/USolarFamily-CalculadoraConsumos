@@ -49,10 +49,24 @@ const ConsumptionTable = () => {
       : 0;
   }, [consumptions]);
 
-  const totalConsumption = useMemo(() => {
-    const validEntries = consumptions.filter(c => !isNaN(c.consumption) && c.consumption !== '');
-    return validEntries.reduce((acc, curr) => acc + curr.consumption, 0);
-  }, [consumptions]);
+    // Rellenar consumos faltantes con el promedio
+    const filledConsumptions = useMemo(() => {
+      const validEntries = consumptions.filter(c => !isNaN(c.consumption) && c.consumption !== '');
+      const average = validEntries.length > 0
+        ? validEntries.reduce((acc, curr) => acc + curr.consumption, 0) / validEntries.length
+        : 0;
+  
+      // Rellenar los consumos faltantes con el promedio
+      return consumptions.map(c => ({
+        ...c,
+        consumption: !isNaN(c.consumption) && c.consumption !== '' ? c.consumption : average,
+      }));
+    }, [consumptions]);
+  
+    // Calcular totalConsumption basado en filledConsumptions
+    const totalConsumption = useMemo(() => {
+      return filledConsumptions.reduce((acc, curr) => acc + curr.consumption, 0);
+    }, [filledConsumptions]);
   
   const totalMonthlyCost = useMemo(() => {
     const validEntries = consumptions.filter(c => !isNaN(c.cost) && c.cost !== 0);
@@ -107,22 +121,19 @@ const ConsumptionTable = () => {
     return projectionData.reduce((acc, curr) => acc + curr.value, 0);
   }, [projectionData]);
 
-  // Validar si todos los meses están llenos
-  const allMonthsFilled = useMemo(() => {
-    return consumptions.every(c => !isNaN(c.consumption) && c.consumption !== '' && c.consumption != 0);
-  }, [consumptions]);
+
 
   // Calcular el tamaño del sistema
   const systemSize = useMemo(() => {
-    if (!allMonthsFilled) return 0; // Si faltan meses, no calcular
+    if (!filledConsumptions ) return 0; // Si faltan meses, no calcular
     return totalConsumption / 1533;
-  }, [totalConsumption, allMonthsFilled]);
+  }, [totalConsumption, filledConsumptions ]);
 
   // Calcular la cantidad de paneles
   const numberOfPanels = useMemo(() => {
-    if (!panelWatts || panelWatts === 0 || !allMonthsFilled) return 0; // Si no hay Panel Watts o faltan meses, no calcular
+    if (!panelWatts || panelWatts === 0 || !filledConsumptions ) return 0; // Si no hay Panel Watts o faltan meses, no calcular
     return Math.ceil((systemSize * 1000) / panelWatts);
-  }, [systemSize, panelWatts, allMonthsFilled]);
+  }, [systemSize, panelWatts, filledConsumptions ]);
 
   // Manejar cambios en los inputs
   const handleInputChange = (id, field, value) => {
@@ -448,7 +459,7 @@ const ConsumptionTable = () => {
                 rightSection="W"
                 my="md"
               />
-            {(!panelWatts || (panelWatts === 0) || !allMonthsFilled) ? ( 
+            {(!panelWatts || (panelWatts === 0) || !filledConsumptions ) ? ( 
             <Text c="red" size="xl">
               Añade valor de mes faltante y los watts por panel.
             </Text>
